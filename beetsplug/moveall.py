@@ -86,6 +86,6 @@ def handle_cli_exit(lib, **_kwargs):
                     try:
                         move(remaining_item_path, destination_path)
                     except Error as error:
-                        log.critical("failed to move %s to %s: %s" % (remaining_item_path, destination_path, error))
+                        log.critical("moveall: failed to move %s to %s: %s" % (remaining_item_path, destination_path, error))
 
             util.prune_dirs(src_dir)
