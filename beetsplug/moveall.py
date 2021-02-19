@@ -19,11 +19,12 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from beets import library, util
+from beets import library, util, config
 from beets.plugins import BeetsPlugin
 from logging import getLogger
 from os import listdir, path
 from shutil import move, Error
+import fnmatch
 
 log = getLogger('beets')
 
@@ -65,24 +66,26 @@ def handle_item_moved(source, destination, **_kwargs):
 def handle_cli_exit(lib, **_kwargs):
     for src_dir, dst_dir in directories_moved.items():
         if dst_dir is MULTIPLE_DESTS:
-            print("moves out of %s have multiple dests, will not moveall" %
-                  (src_dir,))
+            print("moves out of %s have multiple dests, will not moveall" % (src_dir,))
             continue
 
         remaining_items = lib.items(library.PathQuery('path', src_dir))
 
         if next(iter(remaining_items), None):
             print("moveall: some Beets items left in %s, will not move" % (src_dir,))
-        elif path.exists(src_dir):
-            print("moveall: moving all leftovers in %s to %s" % (src_dir, dst_dir))
-            for remaining_item in listdir(src_dir):
-                remaining_item_path = path.join(src_dir, remaining_item).decode('utf8')
-                destination_path = dst_dir.decode('utf8')
 
-                try:
-                    move(remaining_item_path, destination_path)
-                except Error, ex:
-                    log.critical("failed to move {0} to {1}: {2}", dirent_path,
-                                 dst_dir, ex)
+        elif path.exists(src_dir):
+            art_filename = config['art_filename'].as_str()
+
+            for remaining_item in listdir(src_dir):
+                if fnmatch.fnmatch(remaining_item, bytes(art_filename + '.*', encoding='utf8')):
+                    remaining_item_path = path.join(src_dir, remaining_item).decode('utf8')
+                    destination_path = dst_dir.decode('utf8')
+                    print("moveall: moving %s to %s" % (remaining_item_path, destination_path))
+
+                    try:
+                        move(remaining_item_path, destination_path)
+                    except Error as error:
+                        log.critical("failed to move %s to %s: %s" % (remaining_item_path, destination_path, error))
 
             util.prune_dirs(src_dir)
